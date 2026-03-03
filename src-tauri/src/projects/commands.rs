@@ -20,10 +20,10 @@ use super::github_issues::{
     add_advisory_reference, add_issue_reference, add_pr_reference, add_security_reference,
     format_advisory_context_markdown, format_issue_context_markdown, format_pr_context_markdown,
     format_security_context_markdown, generate_branch_name_from_advisory,
-    generate_branch_name_from_issue,
-    generate_branch_name_from_security_alert, get_github_contexts_dir, get_github_pr, get_pr_diff,
-    get_session_context_content, get_session_context_numbers, AdvisoryContext, IssueContext,
-    PullRequestContext, SecurityAlertContext,
+    generate_branch_name_from_issue, generate_branch_name_from_security_alert,
+    get_github_contexts_dir, get_github_pr, get_pr_diff, get_session_context_content,
+    get_session_context_numbers, AdvisoryContext, IssueContext, PullRequestContext,
+    SecurityAlertContext,
 };
 use super::names::generate_unique_workspace_name;
 use super::storage::{get_project_worktrees_dir, load_projects_data, save_projects_data};
@@ -3317,11 +3317,9 @@ pub async fn open_worktree_in_editor(
                 }
                 Err(e) => Err(e),
             },
-            "xcode" => {
-                std::process::Command::new("xed")
-                    .arg(&worktree_path)
-                    .spawn()
-            }
+            "xcode" => std::process::Command::new("xed")
+                .arg(&worktree_path)
+                .spawn(),
             _ => match std::process::Command::new("code")
                 .arg(&worktree_path)
                 .spawn()
@@ -3781,7 +3779,9 @@ pub async fn list_worktree_files(
 
     // Sort: directories first, then alphabetically within each group
     files.sort_by(|a, b| {
-        b.is_dir.cmp(&a.is_dir).then_with(|| a.relative_path.cmp(&b.relative_path))
+        b.is_dir
+            .cmp(&a.is_dir)
+            .then_with(|| a.relative_path.cmp(&b.relative_path))
     });
 
     log::trace!("Found {} files in worktree", files.len());
@@ -3913,7 +3913,11 @@ pub async fn update_project_settings(
     if let Some(team_id) = linear_team_id {
         let team_id = team_id.trim().to_string();
         log::trace!("Updating Linear team ID: {team_id:?}");
-        project.linear_team_id = if team_id.is_empty() { None } else { Some(team_id) };
+        project.linear_team_id = if team_id.is_empty() {
+            None
+        } else {
+            Some(team_id)
+        };
     }
 
     let updated_project = project.clone();
@@ -4465,6 +4469,37 @@ pub async fn get_git_diff(
     log::trace!("Getting {diff_type} diff for {worktree_path}");
 
     super::git_status::get_git_diff(&worktree_path, &diff_type, base_branch.as_deref())
+}
+
+/// Get paginated commit history for a branch
+#[tauri::command]
+pub async fn get_commit_history(
+    worktree_path: String,
+    branch: Option<String>,
+    limit: Option<u32>,
+    skip: Option<u32>,
+) -> Result<super::git_log::CommitHistoryResult, String> {
+    let limit = limit.unwrap_or(50);
+    let skip = skip.unwrap_or(0);
+    log::trace!("Getting commit history for {worktree_path} (branch={branch:?}, limit={limit}, skip={skip})");
+    super::git_log::get_commit_history(&worktree_path, branch.as_deref(), limit, skip)
+}
+
+/// Get the unified diff for a single commit
+#[tauri::command]
+pub async fn get_commit_diff(
+    worktree_path: String,
+    commit_sha: String,
+) -> Result<super::git_status::GitDiff, String> {
+    log::trace!("Getting diff for commit {commit_sha} in {worktree_path}");
+    super::git_log::get_commit_diff(&worktree_path, &commit_sha)
+}
+
+/// Get local branches for a repository by path
+#[tauri::command]
+pub async fn get_repo_branches(repo_path: String) -> Result<Vec<String>, String> {
+    log::trace!("Getting branches for repo at {repo_path}");
+    super::git::get_branches(&repo_path)
 }
 
 /// Revert a single file to its HEAD state, discarding uncommitted changes
@@ -5029,9 +5064,7 @@ pub async fn create_pr_with_ai_content(
 
     if let Ok(view_out) = view_output {
         if view_out.status.success() {
-            if let Ok(view_json) =
-                serde_json::from_slice::<serde_json::Value>(&view_out.stdout)
-            {
+            if let Ok(view_json) = serde_json::from_slice::<serde_json::Value>(&view_out.stdout) {
                 let pr_number = view_json["number"].as_u64().unwrap_or(0) as u32;
                 let pr_url = view_json["url"].as_str().unwrap_or("").to_string();
                 let title = view_json["title"].as_str().unwrap_or("").to_string();
@@ -5730,14 +5763,12 @@ pub async fn create_commit_with_ai(
         .and_then(|p| std::fs::read_to_string(p).ok())
         .and_then(|c| serde_json::from_str::<crate::AppPreferences>(&c).ok())
         .and_then(|p| p.magic_prompt_backends.commit_message_backend);
-    let worktree_id = load_projects_data(&app)
-        .ok()
-        .and_then(|d| {
-            d.worktrees
-                .iter()
-                .find(|w| w.path == worktree_path)
-                .map(|w| w.id.clone())
-        });
+    let worktree_id = load_projects_data(&app).ok().and_then(|d| {
+        d.worktrees
+            .iter()
+            .find(|w| w.path == worktree_path)
+            .map(|w| w.id.clone())
+    });
     let response = generate_commit_message(
         &app,
         &prompt,

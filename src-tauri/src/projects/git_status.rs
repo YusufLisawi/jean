@@ -501,53 +501,17 @@ fn parse_hunk_header(header: &str) -> Option<(u32, u32, u32, u32)> {
     Some((old_start, old_lines, new_start, new_lines))
 }
 
-/// Get detailed diff content for a repository
+/// Parse raw unified diff output into structured DiffFile entries and the raw patch string.
 ///
-/// `diff_type` can be "uncommitted" (working directory vs HEAD) or "branch" (HEAD vs base branch)
-pub fn get_git_diff(
-    repo_path: &str,
-    diff_type: &str,
-    base_branch: Option<&str>,
-) -> Result<GitDiff, String> {
-    let base = base_branch.unwrap_or("main");
-    let range = format!("origin/{base}...HEAD");
-
-    let (base_ref, target_ref, args): (String, String, Vec<&str>) = match diff_type {
-        "uncommitted" => (
-            "HEAD".to_string(),
-            "working directory".to_string(),
-            vec!["diff", "HEAD", "--unified=3"],
-        ),
-        "branch" => {
-            let origin_ref = format!("origin/{base}");
-            (
-                origin_ref,
-                "HEAD".to_string(),
-                vec!["diff", "--unified=3", &range],
-            )
-        }
-        _ => return Err(format!("Invalid diff_type: {diff_type}")),
-    };
-
-    let output = silent_command("git")
-        .args(&args)
-        .current_dir(repo_path)
-        .output()
-        .map_err(|e| format!("Failed to run git diff: {e}"))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Git diff failed: {stderr}"));
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
+/// Shared by `get_git_diff` and `get_commit_diff` so the 150-line parser isn't duplicated.
+pub fn parse_unified_diff(raw_output: &str) -> (Vec<DiffFile>, String) {
     let mut files: Vec<DiffFile> = Vec::new();
     let mut current_file: Option<DiffFile> = None;
     let mut current_hunk: Option<DiffHunk> = None;
     let mut old_line_num: u32 = 0;
     let mut new_line_num: u32 = 0;
 
-    for line in stdout.lines() {
+    for line in raw_output.lines() {
         if line.starts_with("diff --git") {
             // Save previous hunk and file
             if let Some(hunk) = current_hunk.take() {
@@ -669,8 +633,53 @@ pub fn get_git_diff(
         files.push(file);
     }
 
+    (files, raw_output.to_string())
+}
+
+/// Get detailed diff content for a repository
+///
+/// `diff_type` can be "uncommitted" (working directory vs HEAD) or "branch" (HEAD vs base branch)
+pub fn get_git_diff(
+    repo_path: &str,
+    diff_type: &str,
+    base_branch: Option<&str>,
+) -> Result<GitDiff, String> {
+    let base = base_branch.unwrap_or("main");
+    let range = format!("origin/{base}...HEAD");
+
+    let (base_ref, target_ref, args): (String, String, Vec<&str>) = match diff_type {
+        "uncommitted" => (
+            "HEAD".to_string(),
+            "working directory".to_string(),
+            vec!["diff", "HEAD", "--unified=3"],
+        ),
+        "branch" => {
+            let origin_ref = format!("origin/{base}");
+            (
+                origin_ref,
+                "HEAD".to_string(),
+                vec!["diff", "--unified=3", &range],
+            )
+        }
+        _ => return Err(format!("Invalid diff_type: {diff_type}")),
+    };
+
+    let output = silent_command("git")
+        .args(&args)
+        .current_dir(repo_path)
+        .output()
+        .map_err(|e| format!("Failed to run git diff: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Git diff failed: {stderr}"));
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let (mut files, raw_patch_base) = parse_unified_diff(&stdout);
+
     // Build raw patch - start with git diff output
-    let mut raw_patch = stdout.to_string();
+    let mut raw_patch = raw_patch_base;
 
     // For uncommitted diffs, also include untracked (new) files
     if diff_type == "uncommitted" {

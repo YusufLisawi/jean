@@ -175,6 +175,26 @@ pub async fn dispatch_command(
                 crate::projects::get_git_diff(worktree_path, diff_type, base_branch).await?;
             to_value(result)
         }
+        "get_commit_history" => {
+            let worktree_path: String = field(&args, "worktreePath", "worktree_path")?;
+            let branch: Option<String> = field_opt(&args, "branch", "branch")?;
+            let limit: Option<u32> = field_opt(&args, "limit", "limit")?;
+            let skip: Option<u32> = field_opt(&args, "skip", "skip")?;
+            let result =
+                crate::projects::get_commit_history(worktree_path, branch, limit, skip).await?;
+            to_value(result)
+        }
+        "get_commit_diff" => {
+            let worktree_path: String = field(&args, "worktreePath", "worktree_path")?;
+            let commit_sha: String = field(&args, "commitSha", "commit_sha")?;
+            let result = crate::projects::get_commit_diff(worktree_path, commit_sha).await?;
+            to_value(result)
+        }
+        "get_repo_branches" => {
+            let repo_path: String = field(&args, "repoPath", "repo_path")?;
+            let result = crate::projects::get_repo_branches(repo_path).await?;
+            to_value(result)
+        }
         "git_pull" => {
             let worktree_path: String = field(&args, "worktreePath", "worktree_path")?;
             let base_branch: String = field(&args, "baseBranch", "base_branch")?;

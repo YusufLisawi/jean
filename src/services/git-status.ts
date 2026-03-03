@@ -16,7 +16,7 @@ import {
   projectsQueryKeys,
 } from '@/services/projects'
 import type { GitPushResponse, Worktree } from '@/types/projects'
-import type { GitDiff } from '@/types/git-diff'
+import type { GitDiff, CommitHistoryResult } from '@/types/git-diff'
 
 // ============================================================================
 // Types
@@ -443,6 +443,60 @@ export async function getGitDiff(
     diffType,
     baseBranch,
   })
+}
+
+/**
+ * Get paginated commit history for a branch.
+ *
+ * @param worktreePath - Path to the worktree/repository
+ * @param branch - Branch name (defaults to HEAD if omitted)
+ * @param limit - Max commits to return (default 50)
+ * @param skip - Number of commits to skip (for pagination)
+ */
+export async function getCommitHistory(
+  worktreePath: string,
+  branch?: string,
+  limit?: number,
+  skip?: number
+): Promise<CommitHistoryResult> {
+  if (!isTauri()) {
+    throw new Error('Commit history only available in Tauri')
+  }
+  return invoke<CommitHistoryResult>('get_commit_history', {
+    worktreePath,
+    branch: branch ?? null,
+    limit: limit ?? null,
+    skip: skip ?? null,
+  })
+}
+
+/**
+ * Get the unified diff for a single commit.
+ *
+ * @param worktreePath - Path to the worktree/repository
+ * @param commitSha - Full or short SHA of the commit
+ */
+export async function getCommitDiff(
+  worktreePath: string,
+  commitSha: string
+): Promise<GitDiff> {
+  if (!isTauri()) {
+    throw new Error('Commit diff only available in Tauri')
+  }
+  return invoke<GitDiff>('get_commit_diff', {
+    worktreePath,
+    commitSha,
+  })
+}
+
+/**
+ * Get local branches for a repository by path.
+ */
+export async function getRepoBranches(repoPath: string): Promise<string[]> {
+  if (!isTauri()) {
+    throw new Error('Branch listing only available in Tauri')
+  }
+  return invoke<string[]>('get_repo_branches', { repoPath })
 }
 
 /**
