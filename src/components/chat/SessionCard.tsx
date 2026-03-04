@@ -1,6 +1,7 @@
-import { forwardRef, useCallback } from 'react'
+import { forwardRef, useCallback, useState } from 'react'
 import {
   Archive,
+  Download,
   Eye,
   EyeOff,
   FileText,
@@ -35,6 +36,7 @@ import {
   type SessionCardData,
   statusConfig,
 } from './session-card-utils'
+import { ExportSessionModal } from './ExportSessionModal'
 
 export interface SessionCardProps {
   card: SessionCardData
@@ -57,6 +59,8 @@ export interface SessionCardProps {
   onRenameStart?: (sessionId: string, currentName: string) => void
   onRenameSubmit?: (sessionId: string) => void
   onRenameCancel?: () => void
+  onExportClipboard?: () => Promise<void>
+  onExportFile?: () => Promise<void>
 }
 
 export const SessionCard = forwardRef<HTMLDivElement, SessionCardProps>(
@@ -81,12 +85,15 @@ export const SessionCard = forwardRef<HTMLDivElement, SessionCardProps>(
       onRenameStart,
       onRenameSubmit,
       onRenameCancel,
+      onExportClipboard,
+      onExportFile,
     },
     ref
   ) {
     const config = statusConfig[card.status]
     const isRunning = card.status === 'planning' || card.status === 'vibing' || card.status === 'yoloing'
     const resumeCommand = getResumeCommand(card.session)
+    const [exportModalOpen, setExportModalOpen] = useState(false)
     const renameInputRef = useCallback((node: HTMLInputElement | null) => {
       if (node) {
         node.focus()
@@ -358,6 +365,12 @@ export const SessionCard = forwardRef<HTMLDivElement, SessionCardProps>(
               Copy Resume Command
             </ContextMenuItem>
           )}
+          {(onExportClipboard || onExportFile) && (
+            <ContextMenuItem onSelect={() => setExportModalOpen(true)}>
+              <Download className="mr-2 h-4 w-4" />
+              Export Session
+            </ContextMenuItem>
+          )}
           <ContextMenuItem onSelect={onArchive}>
             <Archive className="mr-2 h-4 w-4" />
             Archive Session
@@ -369,6 +382,15 @@ export const SessionCard = forwardRef<HTMLDivElement, SessionCardProps>(
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
+      {(onExportClipboard || onExportFile) && (
+        <ExportSessionModal
+          isOpen={exportModalOpen}
+          onClose={() => setExportModalOpen(false)}
+          sessionName={card.session.name}
+          onExportClipboard={onExportClipboard ?? (() => Promise.resolve())}
+          onExportFile={onExportFile ?? (() => Promise.resolve())}
+        />
+      )}
       </div>
     )
   }
