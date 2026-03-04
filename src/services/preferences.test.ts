@@ -147,6 +147,13 @@ describe('preferences service', () => {
         yolo_backend: null,
         build_thinking_level: null,
         yolo_thinking_level: null,
+        ai_proxy_enabled: false,
+        ai_proxy_auto_start: false,
+        ai_proxy_port: 8317,
+        ai_proxy_backend_port: 8318,
+        ai_proxy_model_groups: [],
+        ai_proxy_rotation_strategy: 'round_robin',
+        ai_proxy_visible_providers: [],
         linear_api_key: null,
       }
       vi.mocked(invoke).mockResolvedValueOnce(mockPreferences)
@@ -261,6 +268,13 @@ describe('preferences service', () => {
         yolo_backend: null,
         build_thinking_level: null,
         yolo_thinking_level: null,
+        ai_proxy_enabled: false,
+        ai_proxy_auto_start: false,
+        ai_proxy_port: 8317,
+        ai_proxy_backend_port: 8318,
+        ai_proxy_model_groups: [],
+        ai_proxy_rotation_strategy: 'round_robin',
+        ai_proxy_visible_providers: [],
         linear_api_key: null,
       }
       vi.mocked(invoke).mockResolvedValueOnce(prefsWithOldBinding)
@@ -351,6 +365,13 @@ describe('preferences service', () => {
         yolo_backend: null,
         build_thinking_level: null,
         yolo_thinking_level: null,
+        ai_proxy_enabled: false,
+        ai_proxy_auto_start: false,
+        ai_proxy_port: 8317,
+        ai_proxy_backend_port: 8318,
+        ai_proxy_model_groups: [],
+        ai_proxy_rotation_strategy: 'round_robin',
+        ai_proxy_visible_providers: [],
         linear_api_key: null,
       }
 
@@ -440,6 +461,13 @@ describe('preferences service', () => {
         yolo_backend: null,
         build_thinking_level: null,
         yolo_thinking_level: null,
+        ai_proxy_enabled: false,
+        ai_proxy_auto_start: false,
+        ai_proxy_port: 8317,
+        ai_proxy_backend_port: 8318,
+        ai_proxy_model_groups: [],
+        ai_proxy_rotation_strategy: 'round_robin',
+        ai_proxy_visible_providers: [],
         linear_api_key: null,
       }
 
@@ -529,6 +557,13 @@ describe('preferences service', () => {
         yolo_backend: null,
         build_thinking_level: null,
         yolo_thinking_level: null,
+        ai_proxy_enabled: false,
+        ai_proxy_auto_start: false,
+        ai_proxy_port: 8317,
+        ai_proxy_backend_port: 8318,
+        ai_proxy_model_groups: [],
+        ai_proxy_rotation_strategy: 'round_robin',
+        ai_proxy_visible_providers: [],
         linear_api_key: null,
       }
 
@@ -616,6 +651,13 @@ describe('preferences service', () => {
         yolo_backend: null,
         build_thinking_level: null,
         yolo_thinking_level: null,
+        ai_proxy_enabled: false,
+        ai_proxy_auto_start: false,
+        ai_proxy_port: 8317,
+        ai_proxy_backend_port: 8318,
+        ai_proxy_model_groups: [],
+        ai_proxy_rotation_strategy: 'round_robin',
+        ai_proxy_visible_providers: [],
         linear_api_key: null,
       }
 

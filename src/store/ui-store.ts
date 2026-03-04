@@ -11,6 +11,7 @@ export type PreferencePane =
   | 'integrations'
   | 'experimental'
   | 'web-access'
+  | 'ai-proxy'
 
 export type OnboardingStartStep = 'claude' | 'gh' | null
 

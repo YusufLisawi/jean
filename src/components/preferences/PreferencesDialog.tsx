@@ -9,6 +9,7 @@ import {
   Puzzle,
   FlaskConical,
   Globe,
+  Radio,
 } from 'lucide-react'
 import {
   Breadcrumb,
@@ -52,6 +53,7 @@ import { ProvidersPane } from './panes/ProvidersPane'
 import { IntegrationsPane } from './panes/IntegrationsPane'
 import { ExperimentalPane } from './panes/ExperimentalPane'
 import { WebAccessPane } from './panes/WebAccessPane'
+import { AiProxyPane } from './panes/AiProxyPane'
 
 const navigationItems = [
   {
@@ -96,6 +98,12 @@ const navigationItems = [
     icon: FlaskConical,
   },
   {
+    id: 'ai-proxy' as const,
+    name: 'AI Proxy (Experimental)',
+    icon: Radio,
+    desktopOnly: true,
+  },
+  {
     id: 'web-access' as const,
     name: 'Web Access (Experimental)',
     icon: Globe,
@@ -121,6 +129,8 @@ const getPaneTitle = (pane: PreferencePane): string => {
       return 'Integrations'
     case 'experimental':
       return 'Experimental'
+    case 'ai-proxy':
+      return 'AI Proxy (Experimental)'
     case 'web-access':
       return 'Web Access (Experimental)'
     default:
@@ -247,6 +257,7 @@ export function PreferencesDialog() {
               {activePane === 'providers' && <ProvidersPane />}
               {activePane === 'integrations' && <IntegrationsPane />}
               {activePane === 'experimental' && <ExperimentalPane />}
+              {activePane === 'ai-proxy' && <AiProxyPane />}
               {activePane === 'web-access' && <WebAccessPane />}
             </div>
           </main>

@@ -8,6 +8,7 @@ use tauri::{AppHandle, Emitter, Manager};
 #[cfg(target_os = "macos")]
 use tauri::menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder};
 
+mod ai_proxy;
 mod background_tasks;
 mod chat;
 mod claude_cli;
@@ -208,6 +209,20 @@ pub struct AppPreferences {
     pub build_thinking_level: Option<String>, // Thinking level override for build mode, None = use session thinking level
     #[serde(default)]
     pub yolo_thinking_level: Option<String>, // Thinking level override for yolo mode, None = use session thinking level
+    #[serde(default)]
+    pub ai_proxy_enabled: bool, // Whether AI proxy is enabled
+    #[serde(default)]
+    pub ai_proxy_auto_start: bool, // Auto-start AI proxy on app launch
+    #[serde(default = "default_ai_proxy_port")]
+    pub ai_proxy_port: u16, // AI proxy port (default: 8317)
+    #[serde(default = "default_ai_proxy_backend_port")]
+    pub ai_proxy_backend_port: u16, // AI proxy backend port (default: 8318)
+    #[serde(default)]
+    pub ai_proxy_model_groups: Vec<ai_proxy::types::ProxyModelGroup>, // Model group configs
+    #[serde(default = "default_ai_proxy_rotation_strategy")]
+    pub ai_proxy_rotation_strategy: String, // "round_robin" or "fill_first"
+    #[serde(default)]
+    pub ai_proxy_visible_providers: Vec<String>, // Provider IDs to show in usage popover (empty = all)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub linear_api_key: Option<String>, // Global Linear personal API key (inherited by all projects)
 }
@@ -420,6 +435,18 @@ fn default_auto_archive_on_pr_merged() -> bool {
 
 fn default_show_keybinding_hints() -> bool {
     true // Enabled by default
+}
+
+fn default_ai_proxy_port() -> u16 {
+    8317
+}
+
+fn default_ai_proxy_backend_port() -> u16 {
+    8318
+}
+
+fn default_ai_proxy_rotation_strategy() -> String {
+    "round_robin".to_string()
 }
 
 // =============================================================================
@@ -1077,6 +1104,13 @@ impl Default for AppPreferences {
             yolo_backend: None,
             build_thinking_level: None,
             yolo_thinking_level: None,
+            ai_proxy_enabled: false,
+            ai_proxy_auto_start: false,
+            ai_proxy_port: default_ai_proxy_port(),
+            ai_proxy_backend_port: default_ai_proxy_backend_port(),
+            ai_proxy_model_groups: Vec::new(),
+            ai_proxy_rotation_strategy: default_ai_proxy_rotation_strategy(),
+            ai_proxy_visible_providers: Vec::new(),
             linear_api_key: None,
         }
     }
@@ -2057,6 +2091,9 @@ pub fn run() {
             // Kill orphaned OpenCode server from a previous crash (if any)
             opencode_server::cleanup_orphaned_server(app.handle());
 
+            // Kill orphaned AI Proxy backend from a previous crash (if any)
+            ai_proxy::backend::cleanup_orphaned_backend(app.handle());
+
             // Allow image access from all known project/worktree directories.
             let app_handle = app.handle().clone();
             match crate::projects::storage::load_projects_data(&app_handle) {
@@ -2069,10 +2106,7 @@ pub fn run() {
                         ) {
                             Ok(worktrees_dir) => {
                                 if let Some(path) = worktrees_dir.to_str() {
-                                    crate::projects::allow_project_in_asset_scope(
-                                        &app_handle,
-                                        path,
-                                    );
+                                    crate::projects::allow_project_in_asset_scope(&app_handle, path);
                                 }
                             }
                             Err(e) => {
@@ -2243,6 +2277,21 @@ pub fn run() {
                             std::process::exit(1);
                         }
                     }
+                }
+            });
+
+            // Auto-start AI Proxy if configured
+            let app_handle_proxy = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                match load_preferences(app_handle_proxy.clone()).await {
+                    Ok(prefs) if prefs.ai_proxy_auto_start => {
+                        log::info!("Auto-starting AI Proxy");
+                        match ai_proxy::commands::start_ai_proxy(app_handle_proxy).await {
+                            Ok(status) => log::info!("AI Proxy started: {status:?}"),
+                            Err(e) => log::error!("Failed to auto-start AI Proxy: {e}"),
+                        }
+                    }
+                    _ => {}
                 }
             });
 
@@ -2516,6 +2565,25 @@ pub fn run() {
             opencode_server::start_opencode_server,
             opencode_server::stop_opencode_server,
             opencode_server::get_opencode_server_status,
+            // AI Proxy commands
+            ai_proxy::commands::check_ai_proxy_backend_installed,
+            ai_proxy::commands::install_ai_proxy_backend,
+            ai_proxy::commands::start_ai_proxy,
+            ai_proxy::commands::stop_ai_proxy,
+            ai_proxy::commands::get_ai_proxy_status,
+            ai_proxy::commands::ai_proxy_login,
+            ai_proxy::commands::get_ai_proxy_active_logins,
+            ai_proxy::commands::get_ai_proxy_models,
+            ai_proxy::commands::get_ai_proxy_accounts,
+            ai_proxy::commands::disable_ai_proxy_account,
+            ai_proxy::commands::enable_ai_proxy_account,
+            ai_proxy::commands::delete_ai_proxy_account,
+            ai_proxy::commands::update_ai_proxy_model_groups,
+            ai_proxy::commands::get_ai_proxy_usage,
+            ai_proxy::commands::reset_ai_proxy_usage,
+            ai_proxy::commands::save_zai_api_key,
+            ai_proxy::commands::open_ai_proxy_auth_folder,
+            ai_proxy::commands::get_ai_proxy_account_usage,
         ])
         .build(tauri::generate_context!())
         .expect("error building tauri application")
@@ -2529,6 +2597,12 @@ pub fn run() {
                     Ok(false) => {}
                     Err(e) => eprintln!("[OPENCODE CLEANUP] Failed during Exit: {e}"),
                 }
+                match ai_proxy::backend::shutdown_backend() {
+                    Ok(true) => eprintln!("[AI_PROXY CLEANUP] Stopped managed AI Proxy backend"),
+                    Ok(false) => {}
+                    Err(e) => eprintln!("[AI_PROXY CLEANUP] Failed during Exit: {e}"),
+                }
+                ai_proxy::proxy_server::stop_proxy();
             }
             tauri::RunEvent::ExitRequested { api, .. } => {
                 // In headless mode, prevent exit when window closes
@@ -2548,6 +2622,16 @@ pub fn run() {
                         eprintln!("[OPENCODE CLEANUP] Failed during ExitRequested: {e}")
                     }
                 }
+                match ai_proxy::backend::shutdown_backend() {
+                    Ok(true) => eprintln!(
+                        "[AI_PROXY CLEANUP] Stopped managed AI Proxy backend on ExitRequested"
+                    ),
+                    Ok(false) => {}
+                    Err(e) => {
+                        eprintln!("[AI_PROXY CLEANUP] Failed during ExitRequested: {e}")
+                    }
+                }
+                ai_proxy::proxy_server::stop_proxy();
             }
             tauri::RunEvent::WindowEvent { label, event, .. } => {
                 if let tauri::WindowEvent::CloseRequested { .. } = event {
@@ -2567,6 +2651,16 @@ pub fn run() {
                             eprintln!("[OPENCODE CLEANUP] Failed during CloseRequested: {e}")
                         }
                     }
+                    match ai_proxy::backend::shutdown_backend() {
+                        Ok(true) => eprintln!(
+                            "[AI_PROXY CLEANUP] Stopped managed AI Proxy backend on CloseRequested"
+                        ),
+                        Ok(false) => {}
+                        Err(e) => {
+                            eprintln!("[AI_PROXY CLEANUP] Failed during CloseRequested: {e}")
+                        }
+                    }
+                    ai_proxy::proxy_server::stop_proxy();
                 }
                 if let tauri::WindowEvent::Destroyed = event {
                     eprintln!("[TERMINAL CLEANUP] Window {label} destroyed");
