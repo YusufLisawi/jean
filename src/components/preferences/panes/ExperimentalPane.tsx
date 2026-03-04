@@ -90,6 +90,23 @@ export const ExperimentalPane: React.FC = () => {
           </InlineField>
 
           <InlineField
+            label="Auto-save context on commit"
+            description="After successful Commit or Commit & Push, auto-generate/update saved context for the active session."
+          >
+            <Switch
+              checked={preferences?.auto_save_context_on_commit ?? false}
+              onCheckedChange={checked => {
+                if (preferences) {
+                  savePreferences.mutate({
+                    ...preferences,
+                    auto_save_context_on_commit: checked,
+                  })
+                }
+              }}
+            />
+          </InlineField>
+
+          <InlineField
             label="Recap model"
             description="Claude model for automatic and on-demand session recaps"
           >

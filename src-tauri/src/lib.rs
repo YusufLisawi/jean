@@ -121,6 +121,8 @@ pub struct AppPreferences {
     pub session_recap_enabled: bool, // Show session recap when returning to unfocused sessions
     #[serde(default = "default_parallel_execution_prompt_enabled")]
     pub parallel_execution_prompt_enabled: bool, // Add system prompt to encourage parallel sub-agent execution
+    #[serde(default = "default_auto_save_context_on_commit")]
+    pub auto_save_context_on_commit: bool, // Auto-generate/update session context after successful commits
     #[serde(default)]
     pub magic_prompts: MagicPrompts, // Customizable prompts for AI-powered features
     #[serde(default)]
@@ -362,6 +364,10 @@ fn default_session_recap_enabled() -> bool {
 }
 
 fn default_parallel_execution_prompt_enabled() -> bool {
+    false // Disabled by default (experimental)
+}
+
+fn default_auto_save_context_on_commit() -> bool {
     false // Disabled by default (experimental)
 }
 
@@ -1059,6 +1065,7 @@ impl Default for AppPreferences {
             syntax_theme_light: default_syntax_theme_light(),
             session_recap_enabled: default_session_recap_enabled(),
             parallel_execution_prompt_enabled: default_parallel_execution_prompt_enabled(),
+            auto_save_context_on_commit: default_auto_save_context_on_commit(),
             magic_prompts: MagicPrompts::default(),
             magic_prompt_models: MagicPromptModels::default(),
             magic_prompt_providers: MagicPromptProviders::default(),

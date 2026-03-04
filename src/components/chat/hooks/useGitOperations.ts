@@ -28,7 +28,7 @@ import type {
   Worktree,
   Project,
 } from '@/types/projects'
-import type { Session } from '@/types/chat'
+import type { SaveContextResponse, Session } from '@/types/chat'
 import {
   DEFAULT_RESOLVE_CONFLICTS_PROMPT,
   resolveMagicPromptProvider,
@@ -75,6 +75,15 @@ interface UseGitOperationsReturn {
   pendingMergeWorktree: Worktree | null
 }
 
+export function shouldAutoSaveContextOnCommit(
+  preferences: AppPreferences | undefined,
+  commitHash: string
+): boolean {
+  return Boolean(
+    preferences?.auto_save_context_on_commit && commitHash.trim().length > 0
+  )
+}
+
 /**
  * Extracts git operation handlers from ChatWindow.
  * Provides handlers for commit, PR, review, and merge operations.
@@ -93,6 +102,47 @@ export function useGitOperations({
   const [showMergeDialog, setShowMergeDialog] = useState(false)
   const [pendingMergeWorktree, setPendingMergeWorktree] =
     useState<Worktree | null>(null)
+
+  const autoSaveContextOnCommit = useCallback(
+    async (prefix: string, commitHash: string) => {
+      if (!shouldAutoSaveContextOnCommit(preferences, commitHash)) return
+      if (!activeSessionId || !activeWorktreeId || !activeWorktreePath) return
+
+      try {
+        await invoke<SaveContextResponse>('generate_context_from_session', {
+          worktreePath: activeWorktreePath,
+          worktreeId: activeWorktreeId,
+          sourceSessionId: activeSessionId,
+          projectName: project?.name ?? worktree?.name ?? 'unknown-project',
+          customPrompt: preferences?.magic_prompts?.context_summary,
+          model: preferences?.magic_prompt_models?.context_summary_model,
+          customProfileName: resolveMagicPromptProvider(
+            preferences?.magic_prompt_providers,
+            'context_summary_provider',
+            preferences?.default_provider
+          ),
+        })
+        queryClient.invalidateQueries({ queryKey: ['session-context'] })
+      } catch (error) {
+        toast.warning(`${prefix}: Commit succeeded but auto-save context failed`, {
+          description: `${error}`,
+        })
+      }
+    },
+    [
+      preferences?.auto_save_context_on_commit,
+      activeSessionId,
+      activeWorktreeId,
+      activeWorktreePath,
+      project?.name,
+      worktree?.name,
+      preferences?.magic_prompts?.context_summary,
+      preferences?.magic_prompt_models?.context_summary_model,
+      preferences?.magic_prompt_providers,
+      preferences?.default_provider,
+      queryClient,
+    ]
+  )
 
   // Handle Commit - creates commit with AI-generated message (no push)
   const handleCommit = useCallback(async () => {
@@ -128,6 +178,7 @@ export function useGitOperations({
       toast.success(`${prefix}: ${result.message.split('\n')[0]}`, {
         id: toastId,
       })
+      void autoSaveContextOnCommit(prefix, result.commit_hash)
     } catch (error) {
       toast.error(`${prefix}: Failed to commit: ${error}`, { id: toastId })
     } finally {
@@ -142,6 +193,7 @@ export function useGitOperations({
     preferences?.magic_prompt_models?.commit_message_model,
     preferences?.magic_prompt_providers,
     preferences?.default_provider,
+    autoSaveContextOnCommit,
   ])
 
   // Handle Commit & Push - creates commit with AI-generated message and pushes
@@ -178,6 +230,7 @@ export function useGitOperations({
 
         // Trigger git status refresh
         triggerImmediateGitPoll()
+        void autoSaveContextOnCommit(prefix, result.commit_hash)
 
         if (result.push_permission_denied) {
           toast.error(
@@ -224,6 +277,7 @@ export function useGitOperations({
       preferences?.magic_prompt_models?.commit_message_model,
       preferences?.magic_prompt_providers,
       preferences?.default_provider,
+      autoSaveContextOnCommit,
     ]
   )
 
