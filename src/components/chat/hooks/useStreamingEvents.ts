@@ -495,7 +495,7 @@ export default function useStreamingEvents({
           // Play waiting sound if not currently viewing this session
           if (!isCurrentlyViewing) {
             const waitingSound = preferences?.waiting_sound ?? 'none'
-            playNotificationSound(waitingSound)
+            void playNotificationSound(waitingSound)
           }
         }
       } else if (event.payload.waiting_for_plan && !isCurrentlyViewing) {
