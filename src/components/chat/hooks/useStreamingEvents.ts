@@ -705,7 +705,7 @@ export default function useStreamingEvents({
         // Play review sound if not currently viewing this session
         if (!isCurrentlyViewing) {
           const reviewSound = preferences?.review_sound ?? 'none'
-          playNotificationSound(reviewSound)
+          void playNotificationSound(reviewSound)
         }
       }
 
