@@ -101,6 +101,7 @@ describe('preferences service', () => {
         syntax_theme_dark: 'vitesse-black',
         syntax_theme_light: 'github-light',
         session_recap_enabled: false,
+        auto_save_context_on_commit: false,
         parallel_execution_prompt_enabled: false,
         magic_prompts: DEFAULT_MAGIC_PROMPTS,
         magic_prompt_models: DEFAULT_MAGIC_PROMPT_MODELS,
@@ -173,6 +174,7 @@ describe('preferences service', () => {
 
       expect(result.current.data?.theme).toBe('system')
       expect(result.current.data?.selected_model).toBe('opus')
+      expect(result.current.data?.auto_save_context_on_commit).toBe(false)
     })
 
     it('returns defaults on backend error', async () => {
@@ -215,6 +217,7 @@ describe('preferences service', () => {
         syntax_theme_dark: 'vitesse-black',
         syntax_theme_light: 'github-light',
         session_recap_enabled: false,
+        auto_save_context_on_commit: false,
         parallel_execution_prompt_enabled: false,
         magic_prompts: DEFAULT_MAGIC_PROMPTS,
         magic_prompt_models: DEFAULT_MAGIC_PROMPT_MODELS,
@@ -305,6 +308,7 @@ describe('preferences service', () => {
         syntax_theme_dark: 'vitesse-black',
         syntax_theme_light: 'github-light',
         session_recap_enabled: false,
+        auto_save_context_on_commit: false,
         parallel_execution_prompt_enabled: false,
         magic_prompts: DEFAULT_MAGIC_PROMPTS,
         magic_prompt_models: DEFAULT_MAGIC_PROMPT_MODELS,
@@ -394,6 +398,7 @@ describe('preferences service', () => {
         syntax_theme_dark: 'vitesse-black',
         syntax_theme_light: 'github-light',
         session_recap_enabled: false,
+        auto_save_context_on_commit: false,
         parallel_execution_prompt_enabled: false,
         magic_prompts: DEFAULT_MAGIC_PROMPTS,
         magic_prompt_models: DEFAULT_MAGIC_PROMPT_MODELS,
@@ -483,6 +488,7 @@ describe('preferences service', () => {
         syntax_theme_dark: 'vitesse-black',
         syntax_theme_light: 'github-light',
         session_recap_enabled: false,
+        auto_save_context_on_commit: false,
         parallel_execution_prompt_enabled: false,
         magic_prompts: DEFAULT_MAGIC_PROMPTS,
         magic_prompt_models: DEFAULT_MAGIC_PROMPT_MODELS,
@@ -570,6 +576,7 @@ describe('preferences service', () => {
         syntax_theme_dark: 'vitesse-black',
         syntax_theme_light: 'github-light',
         session_recap_enabled: false,
+        auto_save_context_on_commit: false,
         parallel_execution_prompt_enabled: false,
         magic_prompts: DEFAULT_MAGIC_PROMPTS,
         magic_prompt_models: DEFAULT_MAGIC_PROMPT_MODELS,

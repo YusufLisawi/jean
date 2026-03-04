@@ -803,6 +803,7 @@ export interface AppPreferences {
   syntax_theme_light: SyntaxTheme // Syntax highlighting theme for light mode
   session_recap_enabled: boolean // Show session recap when returning to unfocused sessions
   parallel_execution_prompt_enabled: boolean // Add system prompt to encourage parallel sub-agent execution
+  auto_save_context_on_commit: boolean // Auto-generate/update session context after successful commit actions
   magic_prompts: MagicPrompts // Customizable prompts for AI-powered features
   magic_prompt_models: MagicPromptModels // Per-prompt model overrides
   magic_prompt_providers: MagicPromptProviders // Per-prompt provider overrides (null = use default_provider)
@@ -1297,6 +1298,7 @@ export const defaultPreferences: AppPreferences = {
   syntax_theme_light: 'github-light',
   session_recap_enabled: false, // Default: disabled (experimental)
   parallel_execution_prompt_enabled: false, // Default: disabled (experimental)
+  auto_save_context_on_commit: false, // Default: disabled (experimental)
   magic_prompts: DEFAULT_MAGIC_PROMPTS,
   magic_prompt_models: DEFAULT_MAGIC_PROMPT_MODELS,
   magic_prompt_providers: DEFAULT_MAGIC_PROMPT_PROVIDERS,
