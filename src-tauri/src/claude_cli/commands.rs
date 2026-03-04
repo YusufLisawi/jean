@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::io::Write;
+
 use tauri::AppHandle;
 
 use super::config::{ensure_cli_dir, get_cli_binary_path, resolve_cli_binary};
@@ -405,13 +405,11 @@ pub async fn install_claude_cli(app: AppHandle, version: Option<String>) -> Resu
     emit_progress(&app, "installing", "Installing Claude CLI...", 65);
 
     // Write the binary to the target path
+    // Uses platform::write_binary_file which handles Windows file-locking (OS error 32)
+    // via a rename strategy when the existing binary is in use by another process.
     log::trace!("Creating binary file at {:?}", binary_path);
-    let mut file = std::fs::File::create(&binary_path)
+    crate::platform::write_binary_file(&binary_path, &binary_content)
         .map_err(|e| format!("Failed to create binary file: {e}"))?;
-
-    log::trace!("Writing {} bytes to binary file", binary_content.len());
-    file.write_all(&binary_content)
-        .map_err(|e| format!("Failed to write binary file: {e}"))?;
     log::trace!("Binary file written successfully");
 
     // Make sure the binary is executable

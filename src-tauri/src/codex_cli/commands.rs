@@ -496,7 +496,7 @@ fn extract_tar_gz_binary(
                     .read_to_end(&mut content)
                     .map_err(|e| format!("Failed to read binary from archive: {e}"))?;
 
-                std::fs::write(binary_path, &content)
+                crate::platform::write_binary_file(binary_path, &content)
                     .map_err(|e| format!("Failed to write binary: {e}"))?;
 
                 return Ok(());
@@ -542,7 +542,7 @@ fn extract_zip_binary(
                 file.read_to_end(&mut content)
                     .map_err(|e| format!("Failed to read binary from archive: {e}"))?;
 
-                std::fs::write(binary_path, &content)
+                crate::platform::write_binary_file(binary_path, &content)
                     .map_err(|e| format!("Failed to write binary: {e}"))?;
 
                 return Ok(());

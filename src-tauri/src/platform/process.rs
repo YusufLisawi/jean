@@ -133,6 +133,52 @@ pub fn kill_process_tree(pid: u32) -> Result<(), String> {
     }
 }
 
+/// Write binary data to a file path, handling Windows file-locking.
+///
+/// On Windows, if the target file is in use by another process (e.g., background version
+/// checks), `File::create` fails with OS error 32. This function works around it by:
+/// 1. Writing to a `.tmp` file in the same directory
+/// 2. Renaming the existing file to `.old` (Windows allows renaming locked files)
+/// 3. Renaming the `.tmp` file to the target path
+/// 4. Best-effort cleanup of the `.old` file
+///
+/// On Unix, this simply writes directly (overwriting is safe even for running binaries).
+pub fn write_binary_file(path: &std::path::Path, content: &[u8]) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        let temp_path = path.with_extension("tmp");
+        let old_path = path.with_extension("old");
+
+        // Write new binary to temp file
+        std::fs::write(&temp_path, content)
+            .map_err(|e| format!("Failed to write temp file: {e}"))?;
+
+        // Move existing file out of the way (Windows allows renaming locked files)
+        if path.exists() {
+            let _ = std::fs::remove_file(&old_path);
+            if let Err(e) = std::fs::rename(path, &old_path) {
+                let _ = std::fs::remove_file(&temp_path);
+                return Err(format!("Failed to replace existing file: {e}"));
+            }
+        }
+
+        // Move temp file into place
+        if let Err(e) = std::fs::rename(&temp_path, path) {
+            let _ = std::fs::rename(&old_path, path);
+            return Err(format!("Failed to install new file: {e}"));
+        }
+
+        // Best-effort cleanup
+        let _ = std::fs::remove_file(&old_path);
+        Ok(())
+    }
+
+    #[cfg(not(windows))]
+    {
+        std::fs::write(path, content).map_err(|e| format!("Failed to write file: {e}"))
+    }
+}
+
 /// Send SIGTERM to gracefully terminate a process (Unix only)
 /// On Windows, this falls back to TerminateProcess
 #[cfg(unix)]

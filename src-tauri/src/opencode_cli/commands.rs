@@ -410,7 +410,7 @@ pub async fn install_opencode_cli(app: AppHandle, version: Option<String>) -> Re
     };
 
     let binary_path = cli_dir.join(binary_name);
-    std::fs::write(&binary_path, &binary_data)
+    crate::platform::write_binary_file(&binary_path, &binary_data)
         .map_err(|e| format!("Failed to write binary: {e}"))?;
 
     // Set executable permissions

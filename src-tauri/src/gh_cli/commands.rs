@@ -284,7 +284,10 @@ pub async fn install_gh_cli(app: AppHandle, version: Option<String>) -> Result<(
     emit_progress(&app, "installing", "Installing GitHub CLI...", 60);
 
     // Move binary to final location
-    std::fs::copy(&extracted_binary_path, &binary_path)
+    // Use write_binary_file to handle Windows file-locking (OS error 32)
+    let binary_content = std::fs::read(&extracted_binary_path)
+        .map_err(|e| format!("Failed to read extracted binary: {e}"))?;
+    crate::platform::write_binary_file(&binary_path, &binary_content)
         .map_err(|e| format!("Failed to copy binary: {e}"))?;
 
     // Clean up temp directory
