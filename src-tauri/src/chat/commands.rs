@@ -3475,6 +3475,21 @@ fn sanitize_for_filename(s: &str) -> String {
         .join("-")
 }
 
+/// Check whether a filename is a session-attached context file.
+/// Attached format: {session_id}-context-{slug}.md where session_id is a UUID.
+fn is_session_attached_context_filename(filename: &str) -> bool {
+    if !filename.ends_with(".md") {
+        return false;
+    }
+
+    let name_without_ext = &filename[..filename.len() - 3];
+    if let Some((prefix, _)) = name_without_ext.split_once("-context-") {
+        Uuid::parse_str(prefix).is_ok()
+    } else {
+        false
+    }
+}
+
 /// Parse a saved context filename into metadata
 /// Filename format: {project}-{timestamp}-{slug}.md
 /// Also handles non-standard formats by using file metadata
@@ -3576,6 +3591,11 @@ pub async fn list_saved_contexts(app: AppHandle) -> Result<SavedContextsResponse
         let path = entry.path();
 
         if path.extension().is_some_and(|ext| ext == "md") {
+            if let Some(filename) = path.file_name().and_then(|n| n.to_str()) {
+                if is_session_attached_context_filename(filename) {
+                    continue;
+                }
+            }
             if let Some(mut context) = parse_context_filename(&path) {
                 // Merge custom name from metadata if present
                 context.name = metadata.names.get(&context.filename).cloned();
@@ -3636,6 +3656,7 @@ pub async fn save_context_file(
     Ok(SaveContextResponse {
         id: Uuid::new_v4().to_string(),
         filename,
+        slug: safe_slug,
         path: path_str,
         size,
         updated: false,
@@ -4220,12 +4241,16 @@ pub async fn generate_context_from_session(
         .to_string();
 
     let size = summary.len() as u64;
+    let response_slug = parse_context_filename(&file_path)
+        .map(|ctx| ctx.slug)
+        .unwrap_or_else(|| sanitize_for_filename(&slug));
 
     log::trace!("Context generated and saved to: {path_str}");
 
     Ok(SaveContextResponse {
         id: Uuid::new_v4().to_string(),
         filename,
+        slug: response_slug,
         path: path_str,
         size,
         updated: is_update,
@@ -5177,6 +5202,22 @@ also not json"#;
         let result = extract_text_from_stream_json(output);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "After tool");
+    }
+
+    #[test]
+    fn test_is_session_attached_context_filename() {
+        assert!(is_session_attached_context_filename(
+            "149c4d16-6a54-4735-afcc-15be517adbd5-context-oauth-ux-improvements.md"
+        ));
+        assert!(is_session_attached_context_filename(
+            "424e58f4-2ffb-4e5a-a99f-a43504d325ac-context-2fcaeb1b-2958-43c8-a8fc-eb58c5a5cb20-context-vibeproxy-jean-integration.md"
+        ));
+        assert!(!is_session_attached_context_filename(
+            "vibeproxy-jean-integration-1772621222-vibeproxy-jean-integration.md"
+        ));
+        assert!(!is_session_attached_context_filename(
+            "main-1772626664-remove-schema-editor-readonly.md"
+        ));
     }
 
     #[test]

@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
+use uuid::Uuid;
 
 /// Attached saved context info returned to frontend
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -9,6 +10,55 @@ pub struct AttachedSavedContext {
     pub name: Option<String>,
     pub size: u64,
     pub created_at: u64,
+}
+
+/// Strip nested "{uuid}-context-" prefixes from an attached-context slug.
+fn strip_nested_attached_prefixes(slug: &str) -> String {
+    let mut current = slug.trim().to_string();
+
+    loop {
+        let Some((prefix, rest)) = current.split_once("-context-") else {
+            break;
+        };
+        if Uuid::parse_str(prefix).is_ok() {
+            current = rest.to_string();
+            continue;
+        }
+        break;
+    }
+
+    current
+}
+
+/// Sanitize a slug for use in filenames.
+fn sanitize_slug_component(s: &str) -> String {
+    s.chars()
+        .map(|c| {
+            if c.is_alphanumeric() || c == '-' {
+                c.to_ascii_lowercase()
+            } else {
+                '-'
+            }
+        })
+        .collect::<String>()
+        .split('-')
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join("-")
+}
+
+/// Extract slug from "{session_id}-context-{slug}.md" if the filename matches.
+fn extract_attached_slug_from_filename(filename: &str) -> Option<String> {
+    if !filename.ends_with(".md") {
+        return None;
+    }
+    let name_without_ext = &filename[..filename.len() - 3];
+    let (prefix, slug) = name_without_ext.split_once("-context-")?;
+    if Uuid::parse_str(prefix).is_ok() {
+        Some(slug.to_string())
+    } else {
+        None
+    }
 }
 
 /// Attach a saved context to a session by copying it to the session-specific location.
@@ -38,6 +88,23 @@ pub async fn attach_saved_context(
         return Err(format!("Source context file not found: {source_path}"));
     }
 
+    // Normalize slug to avoid nested malformed names like
+    // "{session_a}-context-{session_b}-context-{slug}.md".
+    let source_slug = source
+        .file_name()
+        .and_then(|n| n.to_str())
+        .and_then(extract_attached_slug_from_filename)
+        .unwrap_or_default();
+    let slug_input = if slug.trim().is_empty() {
+        source_slug
+    } else {
+        slug
+    };
+    let normalized_slug = sanitize_slug_component(&strip_nested_attached_prefixes(&slug_input));
+    if normalized_slug.is_empty() {
+        return Err("Invalid context slug".to_string());
+    }
+
     let content = std::fs::read_to_string(source)
         .map_err(|e| format!("Failed to read source context file: {e}"))?;
 
@@ -49,7 +116,7 @@ pub async fn attach_saved_context(
         .map(|s| s.to_string());
 
     // Destination file: {session_id}-context-{slug}.md
-    let dest_file = saved_contexts_dir.join(format!("{session_id}-context-{slug}.md"));
+    let dest_file = saved_contexts_dir.join(format!("{session_id}-context-{normalized_slug}.md"));
 
     // Write content to destination
     std::fs::write(&dest_file, &content)
@@ -68,10 +135,10 @@ pub async fn attach_saved_context(
         .map_err(|e| format!("Failed to convert time: {e}"))?
         .as_secs();
 
-    log::trace!("Attached saved context '{slug}' for session {session_id}");
+    log::trace!("Attached saved context '{normalized_slug}' for session {session_id}");
 
     Ok(AttachedSavedContext {
-        slug,
+        slug: normalized_slug,
         name,
         size,
         created_at,
@@ -229,4 +296,53 @@ pub fn cleanup_saved_contexts_for_session(
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_strip_nested_attached_prefixes() {
+        assert_eq!(
+            strip_nested_attached_prefixes(
+                "424e58f4-2ffb-4e5a-a99f-a43504d325ac-context-oauth-ux-improvements"
+            ),
+            "oauth-ux-improvements"
+        );
+        assert_eq!(
+            strip_nested_attached_prefixes(
+                "424e58f4-2ffb-4e5a-a99f-a43504d325ac-context-2fcaeb1b-2958-43c8-a8fc-eb58c5a5cb20-context-vibeproxy-jean-integration"
+            ),
+            "vibeproxy-jean-integration"
+        );
+        assert_eq!(
+            strip_nested_attached_prefixes("vibeproxy-jean-integration"),
+            "vibeproxy-jean-integration"
+        );
+    }
+
+    #[test]
+    fn test_extract_attached_slug_from_filename() {
+        assert_eq!(
+            extract_attached_slug_from_filename(
+                "149c4d16-6a54-4735-afcc-15be517adbd5-context-oauth-ux-improvements.md"
+            ),
+            Some("oauth-ux-improvements".to_string())
+        );
+        assert_eq!(
+            extract_attached_slug_from_filename(
+                "vibeproxy-jean-integration-1772621222-vibeproxy-jean-integration.md"
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn test_sanitize_slug_component() {
+        assert_eq!(
+            sanitize_slug_component("OAuth UX Improvements!!!"),
+            "oauth-ux-improvements"
+        );
+    }
 }

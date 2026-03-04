@@ -829,6 +829,8 @@ pub struct SaveContextResponse {
     pub id: String,
     /// Filename (e.g., "jean-v1-1704067200-implement-magic-commands.md")
     pub filename: String,
+    /// Normalized context slug (filename-safe)
+    pub slug: String,
     /// Full path to the saved context file
     pub path: String,
     /// File size in bytes

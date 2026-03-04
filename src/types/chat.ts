@@ -865,6 +865,8 @@ export interface SaveContextResponse {
   id: string
   /** Filename (e.g., "jean-v1-1704067200-implement-magic-commands.md") */
   filename: string
+  /** Normalized context slug (filename-safe) */
+  slug: string
   /** Full path to the saved context file */
   path: string
   /** File size in bytes */

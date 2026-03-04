@@ -712,13 +712,7 @@ export function useLoadContextHandlers({
 
         refetchContexts()
 
-        const slug = result.filename
-          .split('-')
-          .slice(2)
-          .join('-')
-          .replace('.md', '')
-
-        await attachSavedContext(activeSessionId, result.path, slug)
+        await attachSavedContext(activeSessionId, result.path, result.slug)
         await refetchAttachedContexts()
 
         const verb = result.updated ? 'updated' : 'created'
