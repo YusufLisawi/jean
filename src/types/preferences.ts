@@ -1,4 +1,5 @@
 import type { ThinkingLevel, EffortLevel } from './chat'
+import type { ProxyModelGroup } from './ai-proxy'
 import { DEFAULT_KEYBINDINGS, type KeybindingsMap } from './keybindings'
 
 // =============================================================================
@@ -847,6 +848,13 @@ export interface AppPreferences {
   yolo_backend: string | null // Backend override for yolo plan approval, null = use session backend
   build_thinking_level: string | null // Thinking level override for build mode, null = use session thinking level
   yolo_thinking_level: string | null // Thinking level override for yolo mode, null = use session thinking level
+  ai_proxy_enabled: boolean // Whether AI proxy is enabled
+  ai_proxy_auto_start: boolean // Auto-start AI proxy on app launch
+  ai_proxy_port: number // AI proxy port (default: 8317)
+  ai_proxy_backend_port: number // AI proxy backend port (default: 8318)
+  ai_proxy_model_groups: ProxyModelGroup[] // Model group configs
+  ai_proxy_rotation_strategy: 'round_robin' | 'fill_first' // Rotation strategy
+  ai_proxy_visible_providers: string[] // Provider IDs to show in usage popover (empty = all)
   linear_api_key: string | null // Global Linear personal API key (inherited by all projects)
 }
 
@@ -1341,5 +1349,12 @@ export const defaultPreferences: AppPreferences = {
   yolo_backend: null, // Default: use session backend
   build_thinking_level: null, // Default: use session thinking level
   yolo_thinking_level: null, // Default: use session thinking level
+  ai_proxy_enabled: false,
+  ai_proxy_auto_start: false,
+  ai_proxy_port: 8317,
+  ai_proxy_backend_port: 8318,
+  ai_proxy_model_groups: [],
+  ai_proxy_rotation_strategy: 'round_robin' as const,
+  ai_proxy_visible_providers: [], // Default: show all providers
   linear_api_key: null, // Default: no global Linear API key
 }

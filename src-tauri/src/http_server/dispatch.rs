@@ -1696,6 +1696,90 @@ pub async fn dispatch_command(
         }
 
         // =====================================================================
+        // AI Proxy
+        // =====================================================================
+        "check_ai_proxy_backend_installed" => {
+            let result =
+                crate::ai_proxy::commands::check_ai_proxy_backend_installed(app.clone()).await?;
+            to_value(result)
+        }
+        "install_ai_proxy_backend" => {
+            crate::ai_proxy::commands::install_ai_proxy_backend(app.clone()).await?;
+            Ok(Value::Null)
+        }
+        "start_ai_proxy" => {
+            let result = crate::ai_proxy::commands::start_ai_proxy(app.clone()).await?;
+            to_value(result)
+        }
+        "stop_ai_proxy" => {
+            crate::ai_proxy::commands::stop_ai_proxy().await?;
+            Ok(Value::Null)
+        }
+        "get_ai_proxy_status" => {
+            let result = crate::ai_proxy::commands::get_ai_proxy_status(app.clone()).await?;
+            to_value(result)
+        }
+        "ai_proxy_login" => {
+            let provider: String = from_field(&args, "provider")?;
+            let qwen_email: Option<String> = field_opt(&args, "qwenEmail", "qwen_email")?;
+            crate::ai_proxy::commands::ai_proxy_login(app.clone(), provider, qwen_email).await?;
+            Ok(Value::Null)
+        }
+        "get_ai_proxy_active_logins" => {
+            let result = crate::ai_proxy::commands::get_ai_proxy_active_logins().await?;
+            to_value(result)
+        }
+        "get_ai_proxy_models" => {
+            let result = crate::ai_proxy::commands::get_ai_proxy_models(app.clone()).await?;
+            to_value(result)
+        }
+        "get_ai_proxy_accounts" => {
+            let result = crate::ai_proxy::commands::get_ai_proxy_accounts().await?;
+            to_value(result)
+        }
+        "disable_ai_proxy_account" => {
+            let account_id: String = field(&args, "accountId", "account_id")?;
+            crate::ai_proxy::commands::disable_ai_proxy_account(account_id).await?;
+            Ok(Value::Null)
+        }
+        "enable_ai_proxy_account" => {
+            let account_id: String = field(&args, "accountId", "account_id")?;
+            crate::ai_proxy::commands::enable_ai_proxy_account(account_id).await?;
+            Ok(Value::Null)
+        }
+        "delete_ai_proxy_account" => {
+            let account_id: String = field(&args, "accountId", "account_id")?;
+            crate::ai_proxy::commands::delete_ai_proxy_account(account_id).await?;
+            Ok(Value::Null)
+        }
+        "update_ai_proxy_model_groups" => {
+            let groups: Vec<crate::ai_proxy::types::ProxyModelGroup> = from_field(&args, "groups")?;
+            crate::ai_proxy::commands::update_ai_proxy_model_groups(app.clone(), groups).await?;
+            Ok(Value::Null)
+        }
+        "get_ai_proxy_usage" => {
+            let result = crate::ai_proxy::commands::get_ai_proxy_usage(app.clone()).await?;
+            to_value(result)
+        }
+        "reset_ai_proxy_usage" => {
+            crate::ai_proxy::commands::reset_ai_proxy_usage(app.clone()).await?;
+            Ok(Value::Null)
+        }
+        "save_zai_api_key" => {
+            let api_key: String = from_field(&args, "apiKey")?;
+            crate::ai_proxy::commands::save_zai_api_key(api_key).await?;
+            Ok(Value::Null)
+        }
+        "open_ai_proxy_auth_folder" => {
+            crate::ai_proxy::commands::open_ai_proxy_auth_folder().await?;
+            Ok(Value::Null)
+        }
+        "get_ai_proxy_account_usage" => {
+            let result = crate::ai_proxy::commands::get_ai_proxy_account_usage().await?;
+            to_value(result)
+        }
+
+        // =====================================================================
         // Unknown command
         // =====================================================================
         _ => Err(format!("Unknown command: {command}")),
