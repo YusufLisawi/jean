@@ -161,7 +161,7 @@ function executeKeybindingAction(
           // Canvas view: start PTY headlessly (no terminal UI mounted yet)
           startHeadless(terminalId, {
             worktreeId: targetWorktreeId,
-            worktreePath: targetWorktreePath!,
+            worktreePath: targetWorktreePath ?? '',
             command: runScript,
           })
         }
@@ -431,7 +431,7 @@ export function useMainWindowEventListeners() {
       if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey) {
         // Use e.code (physical key) since e.key can vary with CMD held on macOS
         const digitMatch = e.code.match(/^Digit(\d)$/)
-        const digit = digitMatch ? parseInt(digitMatch[1]!, 10) : NaN
+        const digit = digitMatch ? parseInt(digitMatch[1] ?? '', 10) : NaN
         if (digit >= 1 && digit <= 9) {
           e.preventDefault()
           e.stopPropagation()
@@ -442,7 +442,7 @@ export function useMainWindowEventListeners() {
               const termStore = useTerminalStore.getState()
               const terms = termStore.terminals[wId] ?? []
               if (digit - 1 < terms.length) {
-                termStore.setActiveTerminal(wId, terms[digit - 1]!.id)
+                termStore.setActiveTerminal(wId, terms[digit - 1]?.id ?? '')
               }
             }
           } else if (useUIStore.getState().githubDashboardOpen && digit >= 1 && digit <= 4) {

@@ -699,7 +699,7 @@ export function DesktopToolbarControls({
                   event.preventDefault()
                   event.stopPropagation()
                   if (visibleModelOptions.length > 0) {
-                    handleModelChange(visibleModelOptions[0]!.value)
+                    handleModelChange(visibleModelOptions[0]?.value ?? '')
                   }
                 } else {
                   event.stopPropagation()
